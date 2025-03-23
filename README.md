@@ -78,4 +78,84 @@
 
 ---
 
+# Batch File Renaming Tool User Guide
+
+## Features
+- Supports regular expression replacement
+- Provides multiple naming rule templates
+- Supports date and time formatting
+- Automatically retains file extensions
+- Supports the combination of multiple rules
+
+## Naming Rule Explanation
+
+### Basic Placeholders
+| Symbol | Description                  |
+|--------|-----------------------------|
+| *      | Original filename            |
+| #      | Auto sequence number (with leading zeros) |
+| $      | Random number               |
+| ?      | Single character from original filename |
+| \n     | The nth character of the original filename (starting from 1) |
+
+### Filename Trimming
+| Format     | Example         | Description                |
+|------------|-----------------|---------------------------|
+| `<*-n>`    | `<*-3>`         | Remove the last 3 characters |
+| `<-n*>`    | `<-2*>`         | Remove the first 2 characters |
+
+### Escaping Rule Characters
+Use `\` to escape and directly output rule symbols: `\$` `\#` `\?`
+
+## Date and Time Formatting
+
+### Standard Format Codes
+| Code | Description              | Example        |
+|------|-------------------------|----------------|
+| yyyy | Four-digit year         | 2024           |
+| yy   | Two-digit year          | 24             |
+| YYYY | Chinese year            | 二〇二四        |
+| mm   | Zero-padded month       | 07             |
+| m    | Non-zero-padded month   | 7              |
+| MM   | Chinese month           | 七月            |
+| dd   | Zero-padded day         | 05             |
+| d    | Non-zero-padded day     | 5              |
+| w/ddd | Day of the week (Arabic numeral) | 5      |
+| W/DDD | Day of the week (Chinese numeral) | 五      |
+| hh   | 24-hour format          | 14             |
+| h    | 12-hour format          | 02 PM          |
+| tt   | Zero-padded minute      | 08             |
+| ss   | Seconds                 | 59             |
+
+### Quick Date Formats
+| Tag   | Format Example                |
+|-------|-------------------------------|
+| `<->`  | 2025-3-19                     |
+| `<-->` | 2025年3月19日                 |
+| `<丨>` | 二〇二五年三月十九日           |
+| `<:>`  | 0557 (hour-minute)            |
+| `<::>` | 055712 (hour-minute-second)   |
+| `<-:>` | 2025-3-19 0444                |
+| `<.>`  | 20250319                      |
+
+## Usage Examples
+
+### Basic Renaming
+Original filename: `File_001.jpg`
+- `<*-4>_新` → `File_新.jpg`
+- `\1\2\3` → `Fil.jpg` 
+- `Doc_#` → `Doc_01.jpg`
+
+### Date Combination
+Original filename: `photo.jpg`
+- `Taken on <YYYY-MM-DD>` → `Taken on 2024-07-05.jpg`
+- `Recorded on <--> at <hh:tt>` → `Recorded on 2024-07-05 at 14:08.jpg`
+
+### Mixed Usage
+Original filename: `DSC0001.jpg`
+- `#_<mmdd>` → `01_0705.jpg`
+- `$_<-->` → `5837_2024年7月5日.jpg`
+
+---
+
 Developed by [yumumao@medu.cc](mailto:yumumao@medu.cc)
