@@ -142,7 +142,7 @@ Use `\` to escape and directly output rule symbols: `\$` `\#` `\?`
 
 ### Basic Renaming
 Original filename: `File_001.jpg`
-- `<*-4>_新` → `File_新.jpg`
+- `<*-4>_New` → `File_New.jpg`
 - `\1\2\3` → `Fil.jpg` 
 - `Doc_#` → `Doc_01.jpg`
 
