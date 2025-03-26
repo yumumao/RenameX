@@ -18,7 +18,7 @@ from PyQt5.QtWidgets import (
     QTextEdit
 )
 from PyQt5.QtCore import Qt, QEvent, QDir
-from PyQt5.QtGui import QDragEnterEvent, QDropEvent, QIcon, QFont
+from PyQt5.QtGui import QDragEnterEvent, QDropEvent, QIcon, QFont, QColor, QBrush
 
 
 # =============================================================================
@@ -37,23 +37,23 @@ class RenameDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle("重命名")
         self.setMinimumWidth(500)
-        
+      
         layout = QVBoxLayout()
         label = QLabel("输入新名称:")
         layout.addWidget(label)
-        
+      
         self.name_edit = QLineEdit(current_text)
         self.name_edit.setMinimumWidth(480)
         self.name_edit.selectAll()  # 默认全选当前名称
         layout.addWidget(self.name_edit)
-        
+      
         buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         buttons.accepted.connect(self.accept)
         buttons.rejected.connect(self.reject)
         layout.addWidget(buttons)
-        
+      
         self.setLayout(layout)
-    
+  
     def get_new_name(self):
         return self.name_edit.text()
 
@@ -68,7 +68,7 @@ class HelpDialog(QDialog):
         self.setMinimumWidth(600)
         self.setMinimumHeight(400)
         self.resize(700, 500)
-        
+      
         layout = QVBoxLayout()
         self.text_edit = QTextEdit()
         self.text_edit.setReadOnly(True)
@@ -77,11 +77,11 @@ class HelpDialog(QDialog):
         font.setPointSize(10)
         self.text_edit.setFont(font)
         layout.addWidget(self.text_edit)
-        
+      
         button_box = QDialogButtonBox(QDialogButtonBox.Close)
         button_box.rejected.connect(self.reject)
         layout.addWidget(button_box)
-        
+      
         self.setLayout(layout)
 
 
@@ -94,45 +94,45 @@ class SingleRuleDialog(QDialog):
         self.setWindowTitle("单条规则编辑")
         self.setMinimumWidth(600)
         self.setMinimumHeight(200)
-        
+      
         self.file_path = file_path
         self.file_name = os.path.basename(file_path)
         self.parent_window = parent  # 主窗口
-        
+      
         layout = QVBoxLayout()
         file_info = QLabel(f"为文件设置单独规则: {self.file_name}")
         file_info.setStyleSheet("font-weight: bold;")
         layout.addWidget(file_info)
-        
+      
         rule_layout = QHBoxLayout()
         rule_layout.addWidget(QLabel("单条规则:"))
         self.rule_edit = QLineEdit(default_rule)
         self.rule_edit.setPlaceholderText("使用 * 替代原文件名，详见帮助")
         self.rule_edit.textChanged.connect(self.update_preview)
         rule_layout.addWidget(self.rule_edit)
-        
+      
         help_btn = QToolButton()
         help_btn.setText("?")
         from functools import partial
         help_btn.clicked.connect(partial(self.show_help, self.get_naming_help_text()))
         rule_layout.addWidget(help_btn)
         layout.addLayout(rule_layout)
-        
+      
         preview_layout = QHBoxLayout()
         preview_layout.addWidget(QLabel("预览结果:"))
         self.preview_label = QLabel("")
         self.preview_label.setStyleSheet("font-weight: bold; color: #0066cc;")
         preview_layout.addWidget(self.preview_label)
         layout.addLayout(preview_layout)
-        
+      
         button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         button_box.accepted.connect(self.accept)
         button_box.rejected.connect(self.reject)
         layout.addWidget(button_box)
-        
+      
         self.setLayout(layout)
         self.update_preview()
-    
+  
     def update_preview(self):
         rule = self.rule_edit.text()
         name, ext = os.path.splitext(self.file_name)
@@ -157,10 +157,10 @@ class SingleRuleDialog(QDialog):
         else:
             self.preview_label.setStyleSheet("font-weight: bold; color: #0066cc;")
         self.preview_label.setText(preview)
-    
+  
     def get_rule(self):
         return self.rule_edit.text()
-    
+  
     def get_naming_help_text(self):
         return (
             "命名规则说明：\n\n"
@@ -171,7 +171,7 @@ class SingleRuleDialog(QDialog):
             "<*-n> - 原文件名去掉末尾n个字符\n"
             "<-n*> - 原文件名去掉开头n个字符\n"
             "\\n - 原文件名的第n个字符\n"
-            "使用\$ \# \? 可直接输出这些字符\n\n"            
+            "使用\\$ \\# \\? 可直接输出这些字符\n\n"          
             "日期时间格式化：\n"
             "  yyyy/yy - 年份 (四位/两位数字)   YYYY/YY - 年份 (中文表示)\n"
             "  mm/m  - 月份 (补零/不补零)      MM/M - 月份 (中文表示)\n"
@@ -198,7 +198,7 @@ class SingleRuleDialog(QDialog):
             "文件名可以使用多个规则组合\n\n"
             "-- by yumumao@medu.cc"
         )
-    
+  
     def show_help(self, help_text):
         help_dialog = HelpDialog(help_text, self)
         help_dialog.exec_()
@@ -214,11 +214,11 @@ class RenameConflictDialog(QDialog):
         self.setMinimumWidth(500)
         self.conflict_items = conflict_items
         self.new_names = {}
-        
+      
         layout = QVBoxLayout()
         info_label = QLabel("以下文件名存在冲突，请修改:")
         layout.addWidget(info_label)
-        
+      
         self.name_edits = {}
         for item in conflict_items:
             item_layout = QHBoxLayout()
@@ -230,21 +230,21 @@ class RenameConflictDialog(QDialog):
             name_edit.textChanged.connect(self.update_name)
             item_layout.addWidget(name_edit)
             layout.addLayout(item_layout)
-        
+      
         button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         button_box.accepted.connect(self.accept)
         button_box.rejected.connect(self.reject)
         layout.addWidget(button_box)
         self.setLayout(layout)
-        
+      
         for item in conflict_items:
             self.new_names[item['index']] = item['new_name']
-    
+  
     def update_name(self):
         sender = self.sender()
         if hasattr(sender, 'item_index'):
             self.new_names[sender.item_index] = sender.text()
-    
+  
     def get_new_names(self):
         return self.new_names
 
@@ -258,12 +258,12 @@ class EnhancedFileDialog(QDialog):
         self.setWindowTitle("选择文件和文件夹")
         self.setMinimumWidth(900)
         self.setMinimumHeight(600)
-        
+      
         self.selected_paths = []
         main_layout = QVBoxLayout()
         main_layout.setContentsMargins(6, 6, 6, 6)
         main_layout.setSpacing(4)
-        
+      
         address_layout = QHBoxLayout()
         address_layout.addWidget(QLabel("地址:"))
         self.address_bar = QLineEdit()
@@ -274,9 +274,9 @@ class EnhancedFileDialog(QDialog):
         go_btn.clicked.connect(self.navigate_to_address)
         address_layout.addWidget(go_btn)
         main_layout.addLayout(address_layout)
-        
+      
         self.splitter = QSplitter(Qt.Horizontal)
-        
+      
         folder_widget = QWidget()
         folder_layout = QVBoxLayout(folder_widget)
         folder_layout.setContentsMargins(0, 0, 0, 0)
@@ -293,7 +293,7 @@ class EnhancedFileDialog(QDialog):
         self.tree_view.hideColumn(2)
         self.tree_view.hideColumn(3)
         folder_layout.addWidget(self.tree_view)
-        
+      
         file_widget = QWidget()
         file_layout = QVBoxLayout(file_widget)
         file_layout.setContentsMargins(0, 0, 0, 0)
@@ -321,12 +321,12 @@ class EnhancedFileDialog(QDialog):
         self.list_view.header().setStretchLastSection(False)
         self.list_view.header().setSectionResizeMode(0, QHeaderView.Stretch)
         file_layout.addWidget(self.list_view)
-        
+      
         self.splitter.addWidget(folder_widget)
         self.splitter.addWidget(file_widget)
         self.splitter.setSizes([250, 650])
         main_layout.addWidget(self.splitter)
-        
+      
         button_layout = QHBoxLayout()
         tip_label = QLabel("提示: 双击文件夹进入，单击选中项，Shift/Ctrl可多选")
         tip_label.setStyleSheet("color: #666;")
@@ -339,17 +339,17 @@ class EnhancedFileDialog(QDialog):
         cancel_btn.clicked.connect(self.reject)
         button_layout.addWidget(cancel_btn)
         main_layout.addLayout(button_layout)
-        
+      
         self.setLayout(main_layout)
-        
+      
         self.tree_view.clicked.connect(self.on_folder_clicked)
         self.list_view.doubleClicked.connect(self.on_list_double_clicked)
-        
+      
         if initial_path != QDir.rootPath():
             folder_index = self.tree_model.index(initial_path)
             if folder_index.isValid():
                 self.tree_view.setCurrentIndex(folder_index)
-    
+  
     def navigate_to_address(self):
         path = self.address_bar.text().strip()
         if os.path.exists(path):
@@ -366,13 +366,13 @@ class EnhancedFileDialog(QDialog):
                     self.on_folder_clicked(folder_index)
         else:
             QMessageBox.warning(self, "路径错误", f"路径不存在: {path}")
-    
+  
     def on_folder_clicked(self, index):
         path = self.tree_model.filePath(index)
         self.list_view.setRootIndex(self.list_model.index(path))
         self.path_label.setText(path)
         self.address_bar.setText(path)
-    
+  
     def on_list_double_clicked(self, index):
         path = self.list_model.filePath(index)
         if os.path.isdir(path):
@@ -383,7 +383,7 @@ class EnhancedFileDialog(QDialog):
         else:
             self.add_path_to_selection(path)
             self.accept()
-    
+  
     def add_selected_items(self):
         selected_indexes = self.list_view.selectedIndexes()
         for index in selected_indexes:
@@ -392,14 +392,14 @@ class EnhancedFileDialog(QDialog):
                 self.add_path_to_selection(path)
         if self.selected_paths:
             self.accept()
-    
+  
     def add_path_to_selection(self, path):
         if path not in self.selected_paths:
             self.selected_paths.append(path)
-    
+  
     def get_selected_paths(self):
         return self.selected_paths
-    
+  
     def get_current_directory(self):
         current_index = self.list_view.rootIndex()
         return self.list_model.filePath(current_index)
@@ -442,13 +442,13 @@ class CustomListItem(QWidget):
         layout.addWidget(self.index_label)
         layout.addWidget(self.filename_label)
         self.setFixedHeight(26)
-    
+  
     def get_filename(self):
         return self.filename_label.text()
-    
+  
     def get_original_filename(self):
         return self.current_filename
-    
+  
     def set_filename(self, filename):
         self.current_filename = filename
         display_name = filename
@@ -457,13 +457,13 @@ class CustomListItem(QWidget):
         if self.has_single_rule:
             display_name = f"({display_name})"
         self.filename_label.setText(display_name)
-    
+  
     def set_single_rule(self, has_rule):
         self.has_single_rule = has_rule
         font_style = "font-weight: bold;" if has_rule or self.is_manually_renamed else ""
         self.filename_label.setStyleSheet(f"padding: 2px; font-size: 12pt; {font_style}")
         self.set_filename(self.current_filename)
-        
+      
     def set_manually_renamed(self, is_renamed):
         self.is_manually_renamed = is_renamed
         font_style = "font-weight: bold;" if is_renamed or self.has_single_rule else ""
@@ -484,7 +484,7 @@ class FileListWidget(QListWidget):
         self.is_preview_list = is_preview_list
         self.manual_renamed_items = {}  # {file_path: new_name}
         self.editing_enabled = False
-        
+      
         self.setContextMenuPolicy(Qt.CustomContextMenu)
         self.customContextMenuRequested.connect(self.show_context_menu)
         self.itemDoubleClicked.connect(self.on_double_click)
@@ -497,7 +497,7 @@ class FileListWidget(QListWidget):
         """)
         self.installEventFilter(self)
         self.show_empty_tip = show_empty_tip
-        
+      
         if show_empty_tip:
             self.empty_tip = QLabel("可将需改名的文件/文件夹拖动至此处", self)
             self.empty_tip.setAlignment(Qt.AlignCenter)
@@ -518,9 +518,9 @@ class FileListWidget(QListWidget):
                 color: #999999;
             """)
             self.empty_tip.hide()
-        
+      
         self.itemSelectionChanged.connect(self.on_selection_changed)
-    
+  
     def on_selection_changed(self):
         selected_items = self.selectedItems()
         if not selected_items:
@@ -529,22 +529,22 @@ class FileListWidget(QListWidget):
         if main_window:
             row = self.row(selected_items[0])
             main_window.sync_selection(self, row)
-    
+  
     def find_main_window(self):
         parent = self.parent()
         while parent and not isinstance(parent, FileRenamerApp):
             parent = parent.parent()
         return parent
-        
+      
     def resizeEvent(self, event):
         super().resizeEvent(event)
         if hasattr(self, 'empty_tip'):
             self.empty_tip.resize(self.width(), self.height())
-    
+  
     def showEvent(self, event):
         super().showEvent(event)
         self.update_empty_tip()
-    
+  
     def update_empty_tip(self):
         if not hasattr(self, 'empty_tip'):
             return
@@ -552,13 +552,13 @@ class FileListWidget(QListWidget):
             self.empty_tip.show()
         else:
             self.empty_tip.hide()
-    
+  
     def eventFilter(self, obj, event):
         if event.type() == QEvent.KeyPress and event.key() == Qt.Key_Delete:
             self.delete_selected()
             return True
         return super().eventFilter(obj, event)
-    
+  
     def delete_selected(self):
         main_window = self.find_main_window()
         selected_items = self.selectedItems()
@@ -569,7 +569,7 @@ class FileListWidget(QListWidget):
             main_window.delete_file(rows[0])
         else:
             main_window.delete_files(rows)
-    
+  
     def add_file_item(self, index, filename, is_folder=False, has_single_rule=False, is_manually_renamed=False):
         item = QListWidgetItem(self)
         custom_widget = CustomListItem(index, filename, is_folder, has_single_rule, is_manually_renamed)
@@ -577,38 +577,38 @@ class FileListWidget(QListWidget):
         self.addItem(item)
         self.setItemWidget(item, custom_widget)
         self.update_empty_tip()
-    
+  
     def clear(self):
         super().clear()
         self.update_empty_tip()
-    
+  
     def get_item_filename(self, item):
         widget = self.itemWidget(item)
         if widget:
             return widget.get_filename()
         return ""
-    
+  
     def get_item_original_filename(self, item):
         widget = self.itemWidget(item)
         if widget:
             return widget.get_original_filename()
         return ""
-    
+  
     def set_item_filename(self, item, filename):
         widget = self.itemWidget(item)
         if widget:
             widget.set_filename(filename)
-    
+  
     def set_item_single_rule(self, item, has_rule):
         widget = self.itemWidget(item)
         if widget:
             widget.set_single_rule(has_rule)
-    
+  
     def set_item_manually_renamed(self, item, is_renamed):
         widget = self.itemWidget(item)
         if widget:
             widget.set_manually_renamed(is_renamed)
-    
+  
     def on_double_click(self, item):
         if self.is_preview_list and self.editing_enabled:
             row = self.row(item)
@@ -624,7 +624,7 @@ class FileListWidget(QListWidget):
                         "此文件已在预览结果中手动重命名，请先撤销手动重命名再设置单条规则。")
                     return
                 main_window.edit_single_rule(row, file_path)
-    
+  
     def show_context_menu(self, position):
         menu = QMenu()
         selected_items = self.selectedItems()
@@ -709,16 +709,31 @@ class FileListWidget(QListWidget):
                 menu.addAction(clear_action)
         if not menu.isEmpty():
             menu.exec_(self.mapToGlobal(position))
-    
+  
     def set_editing_enabled(self, enabled):
         self.editing_enabled = enabled
-    
+  
     def reset_manual_renamed_items(self):
         for i in range(self.count()):
             item = self.item(i)
             if item:
                 self.set_item_manually_renamed(item, False)
         self.manual_renamed_items = {}
+
+    # 新增方法：清除所有同步选中产生的特殊背景色
+    def clear_sync_highlight(self):
+        for i in range(self.count()):
+            item = self.item(i)
+            item.setBackground(QBrush())
+
+    # 重写鼠标与键盘事件，清除同步选中的高亮
+    def mousePressEvent(self, event):
+        self.clear_sync_highlight()
+        super().mousePressEvent(event)
+
+    def keyPressEvent(self, event):
+        self.clear_sync_highlight()
+        super().keyPressEvent(event)
 
 
 # =============================================================================
@@ -730,14 +745,14 @@ class FileRenamerApp(QMainWindow):
         self.setWindowTitle("批量文件重命名工具")
         self.setGeometry(100, 100, 1000, 650)
         self.setAcceptDrops(True)
-        
+      
         try:
             icon_path = os.path.join(os.path.dirname(__file__), "rename.ico")
             if os.path.exists(icon_path):
                 self.setWindowIcon(QIcon(icon_path))
         except:
             pass
-        
+      
         self.files = []  # 存储文件路径列表
         self.random_strings = {}
         self.is_splitter_moving = False
@@ -748,7 +763,7 @@ class FileRenamerApp(QMainWindow):
         self.last_rename_operations = []
         self.last_rename_before_files = []  # 上一次命名前的文件全路径（旧名称）
         self.last_rename_after_files = []   # 上一次命名后的文件全路径（当前名称）
-        
+      
         self.cn_num = {
             '0': '〇', '1': '一', '2': '二', '3': '三', '4': '四',
             '5': '五', '6': '六', '7': '七', '8': '八', '9': '九',
@@ -756,25 +771,25 @@ class FileRenamerApp(QMainWindow):
         }
         self.weekday_map = {0: '一', 1: '二', 2: '三', 3: '四', 4: '五', 5: '六', 6: '日'}
         self.lunar_month_names = ['正', '二', '三', '四', '五', '六', '七', '八', '九', '十', '冬', '腊']
-        
+      
         self.init_ui()
-        
+      
     def init_ui(self):
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
         main_layout = QHBoxLayout(central_widget)
-        
+      
         self.splitter = QSplitter(Qt.Horizontal)
         self.splitter.setHandleWidth(6)
         self.splitter.setChildrenCollapsible(False)
         self.splitter.splitterMoved.connect(self.on_splitter_moved)
         self.installEventFilter(self)
-        
+      
         # 左侧面板：重命名设置
         left_panel = QWidget()
         left_panel.setMinimumWidth(300)
         left_layout = QVBoxLayout(left_panel)
-        
+      
         naming_group = QGroupBox("基本命名规则")
         naming_layout = QVBoxLayout()
         pattern_layout = QHBoxLayout()
@@ -819,7 +834,7 @@ class FileRenamerApp(QMainWindow):
         naming_layout.addLayout(ext_layout)
         naming_group.setLayout(naming_layout)
         left_layout.addWidget(naming_group)
-        
+      
         sequence_group = QGroupBox("序号设置")
         sequence_layout = QGridLayout()
         sequence_layout.addWidget(QLabel("起始序号:"), 0, 0)
@@ -862,7 +877,7 @@ class FileRenamerApp(QMainWindow):
         sequence_layout.addWidget(self.letter_case, 4, 1)
         sequence_group.setLayout(sequence_layout)
         left_layout.addWidget(sequence_group)
-        
+      
         random_group = QGroupBox("随机数设置")
         random_layout = QGridLayout()
         random_layout.addWidget(QLabel("随机数位数:"), 0, 0)
@@ -891,7 +906,7 @@ class FileRenamerApp(QMainWindow):
         random_layout.addWidget(QLabel("(设置为相同值则不使用此功能)"), 3, 0, 1, 2)
         random_group.setLayout(random_layout)
         left_layout.addWidget(random_group)
-        
+      
         advanced_group = QGroupBox("高级设置")
         advanced_layout = QVBoxLayout()
         replace_layout = QVBoxLayout()
@@ -949,7 +964,7 @@ class FileRenamerApp(QMainWindow):
         advanced_layout.addLayout(conflict_layout)
         advanced_group.setLayout(advanced_layout)
         left_layout.addWidget(advanced_group)
-        
+      
         button_layout = QHBoxLayout()
         preview_btn = QPushButton("预览重命名结果")
         preview_btn.setMinimumHeight(45)
@@ -972,7 +987,7 @@ class FileRenamerApp(QMainWindow):
         watermark_label.setAlignment(Qt.AlignLeft | Qt.AlignBottom)
         watermark_label.setFixedHeight(15)
         left_layout.addWidget(watermark_label)
-        
+      
         # 右侧面板：原文件列表与预览结果
         right_panel = QWidget()
         right_panel.setMinimumWidth(300)
@@ -988,21 +1003,30 @@ class FileRenamerApp(QMainWindow):
         clear_btn.clicked.connect(self.clear_files)
         file_btns_layout.addWidget(clear_btn)
         right_layout.addLayout(file_btns_layout)
+
+        # 修改：调整控件布局，直接去除暗色模式按钮，同时将排序下拉框和上移、下移按钮统一固定高度30
         control_layout = QHBoxLayout()
-        control_layout.addWidget(QLabel("排序:"))
+        # 右侧放置排序相关控件
+        sort_layout = QHBoxLayout()
+        sort_layout.addWidget(QLabel("排序:"))
         self.sort_combo = QComboBox()
         self.sort_combo.addItems(["名称升序", "名称降序", "日期升序", "日期降序", "大小升序", "大小降序"])
         self.sort_combo.setCurrentIndex(2)
         self.sort_combo.currentIndexChanged.connect(self.sort_files)
-        control_layout.addWidget(self.sort_combo)
-        control_layout.addStretch()
+        self.sort_combo.setFixedHeight(26)
+        sort_layout.addWidget(self.sort_combo)
         move_up_btn = QPushButton("上移")
         move_up_btn.clicked.connect(self.move_file_up)
-        control_layout.addWidget(move_up_btn)
+        move_up_btn.setFixedHeight(26)
+        sort_layout.addWidget(move_up_btn)
         move_down_btn = QPushButton("下移")
         move_down_btn.clicked.connect(self.move_file_down)
-        control_layout.addWidget(move_down_btn)
+        move_down_btn.setFixedHeight(26)
+        sort_layout.addWidget(move_down_btn)
+        control_layout.addLayout(sort_layout)
+
         right_layout.addLayout(control_layout)
+
         list_header_layout = QHBoxLayout()
         list_header_layout.addWidget(QLabel("原文件:"))
         selection_tip = QLabel("(支持Shift/Ctrl多选)")
@@ -1035,28 +1059,35 @@ class FileRenamerApp(QMainWindow):
         self.update_help_label_elide()
         self.preview_list.set_editing_enabled(True)
         self.update_default_tag_preview()
-    
+  
     def on_splitter_moved(self, pos, index):
         try:
             self.is_splitter_moving = True
             self.update_help_label_elide()
         except Exception as e:
             print(f"分割器移动错误: {str(e)}")
-    
+  
+    # 修改后的同步选择：当一个列表中直接点击选中某项时，在另一列表中对应项显示浅黄色背景
     def sync_selection(self, sender, row):
         try:
             if sender == self.file_list:
                 if self.preview_list.count() > 0:
                     self.preview_list.clearSelection()
+                    self.preview_list.clear_sync_highlight()
                     if 0 <= row < self.preview_list.count():
-                        self.preview_list.setCurrentRow(row)
+                        item = self.preview_list.item(row)
+                        item.setSelected(False)
+                        item.setBackground(QColor("#ffffa8"))  # 浅黄色背景
             elif sender == self.preview_list:
                 self.file_list.clearSelection()
+                self.file_list.clear_sync_highlight()
                 if 0 <= row < self.file_list.count():
-                    self.file_list.setCurrentRow(row)
+                    item = self.file_list.item(row)
+                    item.setSelected(False)
+                    item.setBackground(QColor("#ffffa8"))
         except Exception as e:
             print(f"同步选择时出错: {str(e)}")
-    
+  
     def show_regex_help(self):
         help_text = (
             "正则表达式简明指南：\n\n"
@@ -1088,8 +1119,7 @@ class FileRenamerApp(QMainWindow):
         help_dialog = HelpDialog(help_text, self)
         help_dialog.setWindowTitle("正则表达式帮助")
         help_dialog.exec_()
-    
-    # 修改后的空标签预览：将默认空标签经过 process_date_time_tags 完整格式处理后再显示
+  
     def update_default_tag_preview(self):
         tag_content = self.default_tag_edit.text().strip()
         self.default_empty_tag = tag_content
@@ -1099,7 +1129,7 @@ class FileRenamerApp(QMainWindow):
             self.default_tag_preview.setText(f"预览: {processed_text}")
         except Exception as e:
             self.default_tag_preview.setText(f"格式错误: {str(e)}")
-    
+  
     def is_valid_empty_tag(self):
         tag_content = self.default_empty_tag.strip()
         if not tag_content:
@@ -1107,7 +1137,7 @@ class FileRenamerApp(QMainWindow):
         test_text = f"<{tag_content}>"
         processed_text = self.process_date_time_tags(test_text)
         return processed_text != test_text
-    
+  
     def add_files_dialog(self):
         try:
             initial_dir = self.last_folder_path if self.last_folder_path else os.getcwd()
@@ -1118,7 +1148,7 @@ class FileRenamerApp(QMainWindow):
         except Exception as e:
             QMessageBox.critical(self, "错误", f"选择文件时发生错误: {str(e)}")
             traceback.print_exc()
-    
+  
     def add_folders_and_files_dialog(self):
         try:
             dialog = EnhancedFileDialog(self, self.last_folder_path)
@@ -1130,7 +1160,7 @@ class FileRenamerApp(QMainWindow):
         except Exception as e:
             QMessageBox.critical(self, "错误", f"选择文件/文件夹时发生错误: {str(e)}")
             traceback.print_exc()
-    
+  
     def delete_file(self, row):
         if 0 <= row < len(self.files):
             file_path = self.files.pop(row)
@@ -1139,7 +1169,7 @@ class FileRenamerApp(QMainWindow):
             self.update_file_list()
             if self.preview_list.count() > 0:
                 self.preview_rename()
-    
+  
     def delete_files(self, rows):
         rows.sort(reverse=True)
         for row in rows:
@@ -1150,14 +1180,14 @@ class FileRenamerApp(QMainWindow):
         self.update_file_list()
         if self.preview_list.count() > 0:
             self.preview_rename()
-    
+  
     def eventFilter(self, watched, event):
         if event.type() == QEvent.MouseButtonRelease:
             if self.is_splitter_moving:
                 self.is_splitter_moving = False
                 self.check_splitter_snap_on_release()
         return super().eventFilter(watched, event)
-    
+  
     def check_splitter_snap_on_release(self):
         try:
             total_width = self.splitter.width()
@@ -1167,7 +1197,7 @@ class FileRenamerApp(QMainWindow):
                 self.splitter.setSizes([target, total_width - target])
         except Exception as e:
             print(f"分割条吸附错误: {str(e)}")
-    
+  
     def update_help_label_elide(self):
         if not hasattr(self, 'help_label'):
             return
@@ -1185,11 +1215,11 @@ class FileRenamerApp(QMainWindow):
             self.help_label.setText(elided_text)
         else:
             self.help_label.setText(text)
-    
+  
     def resizeEvent(self, event):
         super().resizeEvent(event)
         self.update_help_label_elide()
-    
+  
     def get_naming_help_text(self):
         return (
             "命名规则说明：\n\n"
@@ -1200,7 +1230,7 @@ class FileRenamerApp(QMainWindow):
             "<*-n> - 原文件名去掉末尾n个字符\n"
             "<-n*> - 原文件名去掉开头n个字符\n"
             "\\n - 原文件名的第n个字符\n"
-            "使用\$ \# \? 可直接输出这些字符\n\n"
+            "使用\\$ \\# \\? 可直接输出这些字符\n\n"
             "日期时间格式化：\n"
             "  yyyy/yy   - 年份 (四位/两位数字) YYYY/YY - 年份 (中文表示)\n"
             "  mm/m      - 月份 (补零/不补零)   MM/M    - 月份 (中文表示)\n"
@@ -1228,11 +1258,11 @@ class FileRenamerApp(QMainWindow):
             "文件名可以使用多个规则组合\n\n"
             "-- by yumumao@medu.cc"
         )
-    
+  
     def show_naming_help(self):
         help_dialog = HelpDialog(self.get_naming_help_text(), self)
         help_dialog.exec_()
-    
+  
     def move_file_up(self):
         current_row = self.file_list.currentRow()
         if current_row > 0:
@@ -1247,7 +1277,7 @@ class FileRenamerApp(QMainWindow):
                     if item_widget and item_widget.get_filename() == current_item_text:
                         self.file_list.setCurrentRow(i)
                         break
-    
+  
     def move_file_down(self):
         current_row = self.file_list.currentRow()
         if current_row < self.file_list.count() - 1 and current_row >= 0:
@@ -1262,7 +1292,7 @@ class FileRenamerApp(QMainWindow):
                     if item_widget and item_widget.get_filename() == current_item_text:
                         self.file_list.setCurrentRow(i)
                         break
-    
+  
     def toggle_edit_controls(self, text):
         if text == "插入":
             self.edit_text.setVisible(True)
@@ -1271,11 +1301,11 @@ class FileRenamerApp(QMainWindow):
         else:
             self.edit_text.setVisible(False)
             self.delete_count.setVisible(True)
-    
+  
     def dragEnterEvent(self, event: QDragEnterEvent):
         if event.mimeData().hasUrls():
             event.acceptProposedAction()
-    
+  
     def dropEvent(self, event: QDropEvent):
         paths = []
         for url in event.mimeData().urls():
@@ -1284,7 +1314,7 @@ class FileRenamerApp(QMainWindow):
                 paths.append(path)
         if paths:
             self.add_files(paths)
-    
+  
     def add_files(self, file_paths=None):
         if isinstance(file_paths, list):
             for file_path in file_paths:
@@ -1292,7 +1322,7 @@ class FileRenamerApp(QMainWindow):
                     self.files.append(file_path)
             self.update_file_list()
             self.sort_files()
-    
+  
     def clear_files(self):
         self.files = []
         self.update_file_list()
@@ -1301,14 +1331,14 @@ class FileRenamerApp(QMainWindow):
         self.has_previewed = False
         self.preview_list.reset_manual_renamed_items()
         self.single_rules = {}
-    
+  
     def update_file_list(self):
         self.file_list.clear()
         for i, file_path in enumerate(self.files):
             is_folder = os.path.isdir(file_path)
             has_single_rule = file_path in self.single_rules
             self.file_list.add_file_item(i + 1, os.path.basename(file_path), is_folder, has_single_rule)
-    
+  
     def sort_files(self):
         sort_option = self.sort_combo.currentText()
         file_info = []
@@ -1338,7 +1368,7 @@ class FileRenamerApp(QMainWindow):
             file_info.sort(key=lambda x: x['size'], reverse=True)
         self.files = [info['path'] for info in file_info]
         self.update_file_list()
-    
+  
     def generate_random_string(self, index):
         from_index = self.same_random_from.value()
         to_index = self.same_random_to.value()
@@ -1374,7 +1404,7 @@ class FileRenamerApp(QMainWindow):
                     chars = string.digits + string.ascii_letters
                 self.random_strings[key] = ''.join(random.choice(chars) for _ in range(length))
             return self.random_strings[key]
-    
+  
     def generate_sequence_string(self, index):
         seq_num = self.start_num.value() + (index - 1) * self.increment_num.value()
         seq_str = ""
@@ -1411,7 +1441,7 @@ class FileRenamerApp(QMainWindow):
                 number_str = str(number_part)
             seq_str = number_str + letter_char
         return seq_str
-    
+  
     def process_question_marks(self, pattern, original_name):
         question_mark_groups = []
         current_group = ''
@@ -1436,7 +1466,7 @@ class FileRenamerApp(QMainWindow):
                 original_name = ''
                 result = result.replace(group, replacement, 1)
         return result
-    
+  
     # -------------------------------------------------------------------------
     # 修改后的日期时间标签处理：
     # 1. 先调用 process_empty_tags 和 process_simplified_date_formats
@@ -1451,7 +1481,7 @@ class FileRenamerApp(QMainWindow):
             content = match.group(1)
             return self.format_datetime(content, now)
         return re.sub(r'<([^>]+)>', replace_tag, text)
-    
+  
     def format_datetime(self, template, now):
         dt_codes = {
             "yyyy": lambda: now.strftime('%Y'),
@@ -1464,8 +1494,8 @@ class FileRenamerApp(QMainWindow):
             "M": lambda: self.get_chinese_month(now.month, False),
             "dd": lambda: f"{now.day:02d}",
             "d": lambda: str(now.day),
-            "DD": lambda: self.get_chinese_day(now.day, True),  # 添加这行 - 中文长格式日期
-            "D": lambda: self.get_chinese_day(now.day, False),  # 添加这行 - 中文短格式日期            
+            "DD": lambda: self.get_chinese_day(now.day, True),
+            "D": lambda: self.get_chinese_day(now.day, False),
             "hh": lambda: f"{now.hour:02d}",
             "h": lambda: str(now.hour if now.hour <= 12 else now.hour - 12),
             "HH": lambda: self.get_chinese_number(now.hour),
@@ -1485,17 +1515,16 @@ class FileRenamerApp(QMainWindow):
             template = template.replace(code, dt_codes[code]())
         return template
     # -------------------------------------------------------------------------
-    
+  
     def process_empty_tags(self, text):
         empty_tag_pattern = r'<>'
         if re.search(empty_tag_pattern, text):
             default_tag = self.default_empty_tag
             text = re.sub(empty_tag_pattern, f'<{default_tag}>', text)
         return text
-    
+  
     def process_simplified_date_formats(self, text):
         now = datetime.datetime.now()
-        # 处理 <-:> 格式, 返回 "year-month-day hourminute"（时分之间无冒号）
         if '<-:>' in text:
             replacement = f"{now.year}-{now.month}-{now.day} {now.hour:02d}{now.minute:02d}"
             text = text.replace('<-:>', replacement)
@@ -1512,15 +1541,15 @@ class FileRenamerApp(QMainWindow):
             if pattern in text:
                 text = text.replace(pattern, replacement)
         return text
-    
+  
     def get_approx_lunar_month(self):
         month = datetime.datetime.now().month - 1
         return month if month >= 1 else 12
-    
+  
     def get_approx_lunar_day(self):
         today = datetime.datetime.now()
         return (today.day + 15) % 30 or 30
-    
+  
     def get_chinese_month(self, month, long_format=True):
         if month <= 10:
             return self.cn_num[str(month)]
@@ -1528,7 +1557,7 @@ class FileRenamerApp(QMainWindow):
             return "十一"
         else:
             return "十二"
-    
+  
     def get_chinese_day(self, day, long_format=True):
         if day <= 10:
             return "一十" if (long_format and day == 10) else self.cn_num[str(day)]
@@ -1540,7 +1569,7 @@ class FileRenamerApp(QMainWindow):
             return ("二十" if long_format else "廿") + self.cn_num[str(day)[1]]
         else:
             return ("三十" if long_format else "卅") + ("" if day == 30 else self.cn_num["1"])
-    
+  
     def get_chinese_number(self, num):
         if num <= 10:
             return self.cn_num[str(num)]
@@ -1548,20 +1577,19 @@ class FileRenamerApp(QMainWindow):
             return "十" + (self.cn_num[str(num)[1]] if num > 10 else "")
         else:
             return self.cn_num[str(num)[0]] + "十" + (self.cn_num[str(num)[1]] if num % 10 else "")
-    
+  
     def process_direct_chars(self, pattern):
-        # 将反斜杠转义的 $, # 以及 ? 替换为占位符，避免后续命名规则处理它们
         pattern = pattern.replace('\\$', '___DOLLAR___')
         pattern = pattern.replace('\\#', '___HASH___')
         pattern = pattern.replace('\\?', '___QUESTION___')
         return pattern
-    
+  
     def restore_direct_chars(self, text):
         text = text.replace('___DOLLAR___', '$')
         text = text.replace('___HASH___', '#')
         text = text.replace('___QUESTION___', '?')
         return text
-    
+  
     def process_truncate_pattern(self, pattern, original_name):
         truncate_end_matches = re.findall(r'<\*-(\d+)>', pattern)
         for match in truncate_end_matches:
@@ -1574,7 +1602,7 @@ class FileRenamerApp(QMainWindow):
             replacement = original_name[n:] if n < len(original_name) else ""
             pattern = pattern.replace(f"<-{match}*>", replacement)
         return pattern
-    
+  
     def process_specific_char_pattern(self, pattern, original_name):
         char_matches = re.findall(r'\\(\d+)', pattern)
         for match in char_matches:
@@ -1582,7 +1610,7 @@ class FileRenamerApp(QMainWindow):
             replacement = original_name[n-1] if 1 <= n <= len(original_name) else ""
             pattern = pattern.replace(f"\\{match}", replacement)
         return pattern
-    
+  
     def apply_multiple_replacements(self, text, replace_froms, replace_tos):
         use_regex = self.use_regex.isChecked()
         for i, replace_from in enumerate(replace_froms):
@@ -1600,11 +1628,7 @@ class FileRenamerApp(QMainWindow):
                 QMessageBox.warning(self, "替换错误", error_msg)
                 continue
         return text
-    
-    # =============================================================================
-    # 重点：生成新文件名（不对扩展名进行处理），采用正则仅替换未被转义的特殊字符，
-    # 支持用户通过 \<符号转义输出字面上的 $, # 和 ?。
-    # =============================================================================
+  
     def generate_new_name(self, file_path, index, custom_rule=None):
         base_name = os.path.basename(file_path)
         if os.path.isdir(file_path):
@@ -1618,9 +1642,7 @@ class FileRenamerApp(QMainWindow):
             pattern = self.single_rules[file_path]
         else:
             pattern = self.pattern_edit.text()
-        # 扩展名部分不进行规则处理，直接保留原样
-        
-        # 先保护用户输入中用反斜杠转义的特殊字符
+      
         pattern = self.process_direct_chars(pattern)
         try:
             pattern = self.process_date_time_tags(pattern)
@@ -1651,9 +1673,8 @@ class FileRenamerApp(QMainWindow):
         except Exception as e:
             print(f"随机字符串生成异常: {str(e)}")
             random_str = ''.join(random.choices(string.digits, k=4))
-        
+      
         try:
-            # 仅替换未被 '\' 转义的特殊字符
             new_name = pattern
             new_name = re.sub(r"(?<!\\)\*", name, new_name)
             new_name = re.sub(r"(?<!\\)#", lambda m: seq_str, new_name)
@@ -1661,21 +1682,19 @@ class FileRenamerApp(QMainWindow):
         except Exception as e:
             print(f"通配符替换异常: {str(e)}")
             new_name = name
-        # 去掉保护中留下的转义符（对已转义的特殊字符去除反斜杠）
         new_name = new_name.replace('\\*', '*')
         new_name = new_name.replace('\\#', '#')
         new_name = new_name.replace('\\$', '$')
         new_name = new_name.replace('\\?', '?')
-        # 最后恢复被保护的占位符
         new_name = new_name.replace('___DOLLAR___', '$')
         new_name = new_name.replace('___HASH___', '#')
         new_name = new_name.replace('___QUESTION___', '?')
-        
+      
         if os.path.isdir(file_path):
             return new_name
         else:
             return new_name + ext
-    
+  
     def preview_rename(self):
         if not self.files:
             QMessageBox.warning(self, "警告", "请先添加文件!")
@@ -1717,7 +1736,7 @@ class FileRenamerApp(QMainWindow):
                 widget.filename_label.setText(widget.current_filename + " [包含无效字符]")
         self.preview_list.set_editing_enabled(True)
         self.has_previewed = True
-    
+  
     def execute_rename(self):
         if not self.files:
             QMessageBox.warning(self, "警告", "请先添加文件!")
@@ -1832,8 +1851,7 @@ class FileRenamerApp(QMainWindow):
                 error_count += 1
                 item_type = "文件夹" if is_folder else "文件"
                 error_messages.append(f"无法重命名{item_type} {os.path.basename(file_path)}: {str(e)}")
-                if len(self.last_rename_after_files) < i + 1:
-                    self.last_rename_after_files.append(file_path)
+            # 若重命名异常，也继续处理后续文件
         self.update_file_list()
         self.revert_btn.setEnabled(True)
         self.preview_rename()
@@ -1858,7 +1876,7 @@ class FileRenamerApp(QMainWindow):
             undo_button = result_dialog.addButton("撤销重命名", QMessageBox.ActionRole)
             undo_button.clicked.connect(self.undo_rename)
         result_dialog.exec_()
-    
+  
     def undo_rename(self):
         if not self.last_rename_operations:
             QMessageBox.information(self, "撤销", "没有可撤销的重命名操作")
@@ -1891,7 +1909,7 @@ class FileRenamerApp(QMainWindow):
         else:
             QMessageBox.information(self, "撤销结果", f"成功撤销了 {success_count} 个文件/文件夹的重命名")
         self.last_rename_operations = []
-    
+  
     def revert_last_rename(self):
         if not self.last_rename_before_files or not self.last_rename_after_files:
             QMessageBox.information(self, "回退重命名", "没有可回退的重命名操作")
@@ -1905,7 +1923,7 @@ class FileRenamerApp(QMainWindow):
         self.has_previewed = True
         QMessageBox.information(self, "回退重命名", 
             "已回退预览。\n文件列表显示当前文件名，预览结果显示上一次命名前的名称。\n请点击‘执行重命名’按钮正式回退。")
-    
+  
     def preview_manual_rename(self, row):
         if row < 0 or row >= len(self.files):
             return
@@ -1940,7 +1958,7 @@ class FileRenamerApp(QMainWindow):
             return
         self.preview_list.manual_renamed_items[file_path] = new_text
         self.preview_rename()
-    
+  
     def edit_single_rule(self, row, file_path):
         if file_path in self.preview_list.manual_renamed_items:
             reply = QMessageBox.question(self, "提示",
@@ -1962,14 +1980,14 @@ class FileRenamerApp(QMainWindow):
                 self.update_file_list()
                 if self.has_previewed:
                     self.preview_rename()
-    
+  
     def clear_single_rule(self, file_path):
         if file_path in self.single_rules:
             del self.single_rules[file_path]
             self.update_file_list()
             if self.has_previewed:
                 self.preview_rename()
-    
+  
     def clear_all_single_rules(self):
         if not self.single_rules:
             return
@@ -1979,14 +1997,14 @@ class FileRenamerApp(QMainWindow):
             self.update_file_list()
             if self.has_previewed:
                 self.preview_rename()
-    
+  
     def reset_manual_renamed(self, row):
         if hasattr(self, 'preview_list'):
             file_path = self.files[row]
             if file_path in self.preview_list.manual_renamed_items:
                 del self.preview_list.manual_renamed_items[file_path]
                 self.preview_rename()
-    
+  
     def reset_all_manual_renamed(self):
         if not hasattr(self, 'preview_list') or not self.preview_list.manual_renamed_items:
             return
