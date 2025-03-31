@@ -1682,13 +1682,21 @@ class FileRenamerApp(QMainWindow):
         except Exception as e:
             print(f"通配符替换异常: {str(e)}")
             new_name = name
+        # 去掉保护中留下的转义符
         new_name = new_name.replace('\\*', '*')
         new_name = new_name.replace('\\#', '#')
         new_name = new_name.replace('\\$', '$')
         new_name = new_name.replace('\\?', '?')
+        # 最后恢复被保护的占位符
         new_name = new_name.replace('___DOLLAR___', '$')
         new_name = new_name.replace('___HASH___', '#')
         new_name = new_name.replace('___QUESTION___', '?')
+        
+        # 如果高级设置中设置了替换文本，则应用替换规则
+        if self.replace_from.text().strip():
+            from_list = self.replace_from.text().split('/')
+            to_list = self.replace_to.text().split('/')
+            new_name = self.apply_multiple_replacements(new_name, from_list, to_list)        
       
         if os.path.isdir(file_path):
             return new_name
