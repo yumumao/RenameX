@@ -1613,10 +1613,11 @@ class FileRenamerApp(QMainWindow):
   
     def apply_multiple_replacements(self, text, replace_froms, replace_tos):
         use_regex = self.use_regex.isChecked()
-        for i, replace_from in enumerate(replace_froms):
+        # 将模式及对应目标先打包成元组，并按模式长度降序排序
+        pairs = sorted(zip(replace_froms, replace_tos), key=lambda x: len(x[0]), reverse=True)
+        for replace_from, replace_to in pairs:
             if not replace_from:
                 continue
-            replace_to = replace_tos[i] if i < len(replace_tos) and replace_tos[i] != ':' else (replace_tos[i-1] if i > 0 else "")
             try:
                 if use_regex:
                     text = re.sub(replace_from, replace_to, text)
@@ -1626,7 +1627,6 @@ class FileRenamerApp(QMainWindow):
                 error_msg = f"替换文本时出错: {str(e)}\n模式: '{replace_from}'，替换为: '{replace_to}'"
                 print(error_msg)
                 QMessageBox.warning(self, "替换错误", error_msg)
-                continue
         return text
   
     def generate_new_name(self, file_path, index, custom_rule=None):
@@ -1692,11 +1692,16 @@ class FileRenamerApp(QMainWindow):
         new_name = new_name.replace('___HASH___', '#')
         new_name = new_name.replace('___QUESTION___', '?')
         
-        # 如果高级设置中设置了替换文本，则应用替换规则
+        # 修复多于两个替换关键字的问题：如果目标替换词不足，则用最后一个补全
         if self.replace_from.text().strip():
             from_list = self.replace_from.text().split('/')
             to_list = self.replace_to.text().split('/')
-            new_name = self.apply_multiple_replacements(new_name, from_list, to_list)        
+            if from_list and len(to_list) < len(from_list):
+                if not to_list:
+                    to_list = [''] * len(from_list)
+                else:
+                    to_list += [to_list[-1]] * (len(from_list) - len(to_list))
+            new_name = self.apply_multiple_replacements(new_name, from_list, to_list)     
       
         if os.path.isdir(file_path):
             return new_name
