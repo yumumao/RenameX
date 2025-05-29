@@ -844,7 +844,7 @@ class FileRenamerApp(QMainWindow):
         sequence_layout.addWidget(self.start_num, 0, 1)
         sequence_layout.addWidget(QLabel("序号增量:"), 1, 0)
         self.increment_num = QSpinBox()
-        self.increment_num.setRange(1, 999)
+        self.increment_num.setRange(-999, 999)
         self.increment_num.setValue(1)
         sequence_layout.addWidget(self.increment_num, 1, 1)
         sequence_layout.addWidget(QLabel("序号位数:"), 2, 0)
@@ -1696,6 +1696,13 @@ class FileRenamerApp(QMainWindow):
         if self.replace_from.text().strip():
             from_list = self.replace_from.text().split('/')
             to_list = self.replace_to.text().split('/')
+            
+            # 处理特殊情况：当to值为":"时，使用分隔符前方内容
+            for i in range(len(to_list)):
+                if to_list[i] == ":":
+                    if i > 0:  # 确保有前一项
+                        to_list[i] = to_list[i-1]
+            
             if from_list and len(to_list) < len(from_list):
                 if not to_list:
                     to_list = [''] * len(from_list)
@@ -1797,6 +1804,7 @@ class FileRenamerApp(QMainWindow):
             if self.auto_resolve_conflicts.isChecked():
                 try:
                     new_names = self.auto_resolve_name_conflicts(new_names)
+                    # 更新预览列表显示
                     for i, name in enumerate(new_names):
                         if i < self.preview_list.count():
                             item = self.preview_list.item(i)
@@ -1806,6 +1814,28 @@ class FileRenamerApp(QMainWindow):
                                     custom_widget.set_filename(name)
                 except Exception as e:
                     print(f"自动解决冲突时出错: {str(e)}")
+                    QMessageBox.warning(self, "冲突解决错误", 
+                        f"自动解决冲突时出错: {str(e)}\n将使用手动解决冲突。")
+                    # 如果自动解决失败，回退到手动解决
+                    try:
+                        conflict_dialog = RenameConflictDialog(conflict_items, self)
+                        if conflict_dialog.exec_() == QDialog.Accepted:
+                            new_name_dict = conflict_dialog.get_new_names()
+                            for idx, name in new_name_dict.items():
+                                new_names[idx - 1] = name
+                                if idx - 1 < self.preview_list.count():
+                                    item = self.preview_list.item(idx - 1)
+                                    if item:
+                                        custom_widget = self.preview_list.itemWidget(item)
+                                        if custom_widget:
+                                            custom_widget.set_filename(name)
+                        else:
+                            return
+                    except Exception as e2:
+                        print(f"手动解决冲突对话框出错: {str(e2)}")
+                        QMessageBox.warning(self, "冲突解决错误", 
+                            f"处理文件名冲突时出错: {str(e2)}\n请检查文件名设置。")
+                    return
             else:
                 try:
                     conflict_dialog = RenameConflictDialog(conflict_items, self)
@@ -1823,10 +1853,8 @@ class FileRenamerApp(QMainWindow):
                         return
                 except Exception as e:
                     print(f"手动解决冲突对话框出错: {str(e)}")
-                    QMessageBox.warning(self, "冲突解决错误", 
-                        f"处理文件名冲突时出错: {str(e)}\n请尝试启用自动解决冲突功能。")
-                    return
-        if QMessageBox.question(self, "确认重命名", 
+        
+        if QMessageBox.question(self, "确认重命名",
             f"确定要重命名 {len(self.files)} 个文件/文件夹吗？", 
             QMessageBox.Yes | QMessageBox.No) != QMessageBox.Yes:
             return
@@ -1837,34 +1865,8 @@ class FileRenamerApp(QMainWindow):
         unchanged_count = 0
         error_messages = []
         self.last_rename_operations = []
-        for i, file_path in enumerate(self.files):
-            try:
-                dir_path = os.path.dirname(file_path)
-                new_name = new_names[i]
-                new_path = os.path.join(dir_path, new_name)
-                self.last_rename_after_files.append(new_path)
-                is_folder = os.path.isdir(file_path)
-                if os.path.basename(file_path) == new_name:
-                    unchanged_count += 1
-                    continue
-                if file_path in self.single_rules:
-                    del self.single_rules[file_path]
-                if file_path in self.preview_list.manual_renamed_items:
-                    del self.preview_list.manual_renamed_items[file_path]
-                self.last_rename_operations.append({
-                    'old_path': file_path,
-                    'new_path': new_path,
-                    'old_name': os.path.basename(file_path),
-                    'new_name': new_name
-                })
-                os.rename(file_path, new_path)
-                success_count += 1
-                self.files[i] = new_path
-            except Exception as e:
-                error_count += 1
-                item_type = "文件夹" if is_folder else "文件"
-                error_messages.append(f"无法重命名{item_type} {os.path.basename(file_path)}: {str(e)}")
-            # 若重命名异常，也继续处理后续文件
+        # 执行多步骤重命名以处理文件名交换等复杂情况
+        success_count, error_count, unchanged_count, error_messages = self.perform_multi_step_rename(new_names)
         self.update_file_list()
         self.revert_btn.setEnabled(True)
         self.preview_rename()
@@ -2026,7 +2028,338 @@ class FileRenamerApp(QMainWindow):
             self.preview_list.manual_renamed_items = {}
             self.preview_rename()
 
+    def auto_resolve_name_conflicts(self, new_names):
+        """
+        自动解决文件名冲突的方法
+        支持负增量倒序处理和循环交换冲突解决
+        """
+        increment = self.increment_num.value()
+        
+        # 检测是否存在循环冲突（如文件名交换）
+        if self.has_circular_conflicts(new_names):
+            return self.resolve_circular_conflicts(new_names)
+        
+        # 如果增量为负数，采用倒序处理策略
+        elif increment < 0:
+            return self.resolve_negative_increment_conflicts(new_names)
+        
+        else:
+            # 原有的冲突解决逻辑（正增量情况）
+            return self.resolve_conflicts_normal(new_names)
 
+    def has_circular_conflicts(self, new_names):
+        """
+        检测是否存在循环冲突（如 A→B, B→A 的交换情况）
+        """
+        # 按目录分组检测
+        dir_groups = {}
+        for i, file_path in enumerate(self.files):
+            dir_path = os.path.dirname(file_path)
+            if dir_path not in dir_groups:
+                dir_groups[dir_path] = []
+            dir_groups[dir_path].append(i)
+        
+        # 检查每个目录中是否有循环冲突
+        for dir_path, indices in dir_groups.items():
+            current_names = [os.path.basename(self.files[i]) for i in indices]
+            target_names = [new_names[i] for i in indices]
+            
+            # 创建当前名称到目标名称的映射
+            name_mapping = {}
+            for j, idx in enumerate(indices):
+                current_name = current_names[j]
+                target_name = target_names[j]
+                if current_name != target_name:  # 只关心需要改名的文件
+                    name_mapping[current_name] = target_name
+            
+            # 检测循环：如果A→B且B→A，或者更复杂的循环
+            for current_name, target_name in name_mapping.items():
+                # 检查是否存在反向映射
+                if target_name in name_mapping:
+                    # 检查是否形成循环
+                    visited = set()
+                    current = target_name
+                    while current in name_mapping and current not in visited:
+                        visited.add(current)
+                        current = name_mapping[current]
+                        if current == current_name:  # 找到循环
+                            return True
+                        
+            # 检查目标文件名是否与当前存在的文件名冲突
+            for j, idx in enumerate(indices):
+                target_name = target_names[j]
+                current_name = current_names[j]
+                if target_name != current_name and target_name in current_names:
+                    # 确认这不是简单的序号递增
+                    target_idx = current_names.index(target_name)
+                    if target_names[target_idx] != current_name:
+                        # 这是一个真正的冲突，但不是交换
+                        continue
+                    else:
+                        # 这是交换冲突
+                        return True
+        
+        return False
+
+    def resolve_circular_conflicts(self, new_names):
+        """
+        解决循环冲突，使用临时文件名策略
+        """
+        import uuid
+        resolved_names = new_names.copy()
+        
+        # 按目录分组处理
+        dir_groups = {}
+        for i, file_path in enumerate(self.files):
+            dir_path = os.path.dirname(file_path)
+            if dir_path not in dir_groups:
+                dir_groups[dir_path] = []
+            dir_groups[dir_path].append(i)
+        
+        for dir_path, indices in dir_groups.items():
+            current_names = [os.path.basename(self.files[i]) for i in indices]
+            target_names = [new_names[i] for i in indices]
+            
+            # 找出在当前目录中的冲突文件
+            conflicts = []
+            for j, idx in enumerate(indices):
+                current_name = current_names[j]
+                target_name = target_names[j]
+                
+                # 检查目标名称是否与其他当前文件名冲突
+                if target_name != current_name and target_name in current_names:
+                    conflicts.append(idx)
+            
+            # 对所有冲突的文件使用临时名称
+            for idx in conflicts:
+                original_target = new_names[idx]
+                # 生成临时文件名，确保不与任何现有文件冲突
+                temp_name = f"TEMP_{uuid.uuid4().hex[:8]}_{original_target}"
+                # 确保临时名称不与现有文件冲突
+                while temp_name in current_names or temp_name in target_names:
+                    temp_name = f"TEMP_{uuid.uuid4().hex[:8]}_{original_target}"
+                resolved_names[idx] = temp_name
+        
+        return resolved_names
+
+    def resolve_negative_increment_conflicts(self, new_names):
+        """
+        处理负增量的冲突解决
+        """
+        # 创建文件索引和对应目录的映射
+        file_dirs = {}
+        for i, file_path in enumerate(self.files):
+            dir_path = os.path.dirname(file_path)
+            if dir_path not in file_dirs:
+                file_dirs[dir_path] = []
+            file_dirs[dir_path].append(i)
+        
+        # 对每个目录内的文件进行倒序重命名
+        processed_names = new_names.copy()
+        for dir_path, indices in file_dirs.items():
+            if len(indices) > 1:  # 只有多个文件在同一目录才需要特殊处理
+                # 按索引倒序排列
+                indices.sort(reverse=True)
+                
+                # 重新生成序号，从最大序号开始
+                start_num = self.start_num.value()
+                increment = self.increment_num.value()
+                max_index = max(indices)
+                current_seq = start_num + max_index * abs(increment)
+                
+                for idx in indices:
+                    # 重新生成文件名，使用当前序号
+                    try:
+                        file_path = self.files[idx]
+                        old_start = self.start_num.value()
+                        old_increment = self.increment_num.value()
+                        
+                        # 临时设置序号参数
+                        self.start_num.setValue(current_seq)
+                        self.increment_num.setValue(1)  # 临时设为1避免重复计算
+                        
+                        # 生成新名称
+                        new_name = self.generate_new_name(file_path, 0)
+                        processed_names[idx] = new_name
+                        
+                        # 恢复原始设置
+                        self.start_num.setValue(old_start)
+                        self.increment_num.setValue(old_increment)
+                        
+                        # 更新序号
+                        current_seq += increment  # 这里increment是负数
+                        
+                    except Exception as e:
+                        print(f"处理倒序重命名时出错: {str(e)}")
+                        continue
+        
+        return processed_names
+
+    def resolve_conflicts_normal(self, new_names):
+        """
+        原有的正常冲突解决方法（正增量情况）
+        """
+        conflict_groups = {}
+        for i, new_name in enumerate(new_names):
+            dir_path = os.path.dirname(self.files[i])
+            key = f"{dir_path}#{new_name}"
+            if key not in conflict_groups:
+                conflict_groups[key] = []
+            conflict_groups[key].append(i)
+        
+        resolved_names = new_names.copy()
+        for key, indices in conflict_groups.items():
+            if len(indices) > 1:
+                for j, idx in enumerate(indices):
+                    if j > 0:  # 第一个保持原名，后续添加后缀
+                        name_part, ext_part = os.path.splitext(resolved_names[idx])
+                        resolved_names[idx] = f"{name_part}_{j}{ext_part}"
+        
+        return resolved_names
+
+    def perform_multi_step_rename(self, new_names):
+        """
+        执行多步骤重命名，支持文件名交换等复杂情况
+        """
+        import uuid
+        success_count = 0
+        error_count = 0
+        unchanged_count = 0
+        error_messages = []
+        
+        # 按目录分组处理
+        dir_groups = {}
+        for i, file_path in enumerate(self.files):
+            dir_path = os.path.dirname(file_path)
+            if dir_path not in dir_groups:
+                dir_groups[dir_path] = []
+            dir_groups[dir_path].append(i)
+        
+        # 处理每个目录
+        for dir_path, indices in dir_groups.items():
+            current_names = [os.path.basename(self.files[i]) for i in indices]
+            target_names = [new_names[i] for i in indices]
+            
+            # 检测哪些文件需要重命名
+            rename_needed = []
+            temp_mappings = {}  # 临时文件名映射
+            
+            for j, idx in enumerate(indices):
+                current_name = current_names[j]
+                target_name = target_names[j]
+                
+                if current_name == target_name:
+                    unchanged_count += 1
+                    continue
+                    
+                rename_needed.append((idx, current_name, target_name))
+            
+            if not rename_needed:
+                continue
+                
+            # 第一步：将所有需要重命名且目标名称会产生冲突的文件先重命名为临时名称
+            for idx, current_name, target_name in rename_needed:
+                file_path = self.files[idx]
+                
+                # 检查目标名称是否与当前目录中的其他文件冲突
+                if target_name in current_names and target_name != current_name:
+                    # 需要使用临时名称
+                    temp_name = f"TEMP_{uuid.uuid4().hex[:8]}_{target_name}"
+                    temp_path = os.path.join(dir_path, temp_name)
+                    
+                    try:
+                        is_folder = os.path.isdir(file_path)
+                        os.rename(file_path, temp_path)
+                        temp_mappings[idx] = (temp_path, target_name, file_path)
+                        self.files[idx] = temp_path
+                        
+                        # 更新current_names列表
+                        current_names[indices.index(idx)] = temp_name
+                        
+                        # 记录操作
+                        self.last_rename_operations.append({
+                            'old_path': file_path,
+                            'new_path': temp_path,
+                            'old_name': os.path.basename(file_path),
+                            'new_name': temp_name
+                        })
+                        
+                    except Exception as e:
+                        error_count += 1
+                        item_type = "文件夹" if is_folder else "文件"
+                        error_messages.append(f"无法重命名{item_type} {os.path.basename(file_path)} 到临时名称: {str(e)}")
+                        continue
+            
+            # 第二步：将其他不冲突的文件直接重命名到目标名称
+            for idx, current_name, target_name in rename_needed:
+                if idx in temp_mappings:
+                    continue  # 已经在第一步处理
+                    
+                file_path = self.files[idx]
+                new_path = os.path.join(dir_path, target_name)
+                
+                try:
+                    is_folder = os.path.isdir(file_path)
+                    
+                    # 清理规则
+                    if file_path in self.single_rules:
+                        del self.single_rules[file_path]
+                    if file_path in self.preview_list.manual_renamed_items:
+                        del self.preview_list.manual_renamed_items[file_path]
+                    
+                    # 记录操作
+                    self.last_rename_operations.append({
+                        'old_path': file_path,
+                        'new_path': new_path,
+                        'old_name': current_name,
+                        'new_name': target_name
+                    })
+                    
+                    os.rename(file_path, new_path)
+                    self.files[idx] = new_path
+                    self.last_rename_after_files.append(new_path)
+                    success_count += 1
+                    
+                    # 更新current_names列表，为第三步做准备
+                    current_names[indices.index(idx)] = target_name
+                    
+                except Exception as e:
+                    error_count += 1
+                    item_type = "文件夹" if is_folder else "文件"
+                    error_messages.append(f"无法重命名{item_type} {current_name}: {str(e)}")
+            
+            # 第三步：将临时文件重命名为最终目标名称
+            for idx, (temp_path, target_name, original_path) in temp_mappings.items():
+                final_path = os.path.join(dir_path, target_name)
+                
+                try:
+                    is_folder = os.path.isdir(temp_path)
+                    
+                    # 清理规则
+                    if original_path in self.single_rules:
+                        del self.single_rules[original_path]
+                    if original_path in self.preview_list.manual_renamed_items:
+                        del self.preview_list.manual_renamed_items[original_path]
+                    
+                    # 记录最终重命名操作
+                    self.last_rename_operations.append({
+                        'old_path': temp_path,
+                        'new_path': final_path,
+                        'old_name': os.path.basename(temp_path),
+                        'new_name': target_name
+                    })
+                    
+                    os.rename(temp_path, final_path)
+                    self.files[idx] = final_path
+                    self.last_rename_after_files.append(final_path)
+                    success_count += 1
+                    
+                except Exception as e:
+                    error_count += 1
+                    item_type = "文件夹" if is_folder else "文件"
+                    error_messages.append(f"无法将临时文件重命名为最终名称 {target_name}: {str(e)}")
+        
+        return success_count, error_count, unchanged_count, error_messages
 # =============================================================================
 # 全局异常处理器
 # =============================================================================
