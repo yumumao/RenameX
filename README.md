@@ -1,5 +1,12 @@
 # 批量文件重命名工具使用说明
 
+## 📥 下载 / Download
+
+👉 [**点击下载 RenameX**](https://github.com/yumumao/RenameX/releases/latest)
+
+双击即可运行，无需安装。
+Download and double-click to run. No installation required.
+
 ## 功能特性
 - 支持正则表达式替换
 - 提供多种命名规则模板
