@@ -14,6 +14,9 @@ Download and double-click to run. No installation required.
 - 智能保留文件扩展名
 - 支持多规则组合使用
 
+## 🖼 界面截图
+![界面截图](./screenshot/screenshot1.png)
+
 ## 命名规则说明
 
 ### 基础占位符
@@ -93,6 +96,9 @@ Download and double-click to run. No installation required.
 - Supports date and time formatting
 - Automatically retains file extensions
 - Supports the combination of multiple rules
+
+## 🖼 Screenshots
+![screenshot](./screenshot/screenshot2.png)
 
 ## Naming Rule Explanation
 
